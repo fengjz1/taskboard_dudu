@@ -248,6 +248,21 @@ class PageManager {
         if (rewardSortToggle) {
             rewardSortToggle.addEventListener('click', () => this.toggleRewardSortMode());
         }
+
+        // 使用事件委托处理排序按钮点击
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('sort-btn')) {
+                const taskId = e.target.dataset.taskId;
+                const rewardId = e.target.dataset.rewardId;
+                const direction = parseInt(e.target.dataset.direction);
+                
+                if (taskId) {
+                    moveTask(parseInt(taskId), direction);
+                } else if (rewardId) {
+                    moveReward(parseInt(rewardId), direction);
+                }
+            }
+        });
     }
 
     showPage(pageName) {
@@ -317,11 +332,13 @@ class PageManager {
 
     toggleTaskSortMode() {
         this.taskSortMode = !this.taskSortMode;
+        document.body.classList.toggle('sorting-mode', this.taskSortMode || this.rewardSortMode);
         this.updateUI();
     }
 
     toggleRewardSortMode() {
         this.rewardSortMode = !this.rewardSortMode;
+        document.body.classList.toggle('sorting-mode', this.taskSortMode || this.rewardSortMode);
         this.updateUI();
     }
 
@@ -349,6 +366,18 @@ class PageManager {
                 if (downBtn) downBtn.disabled = index === rewards.length - 1;
             });
         }
+    }
+
+    // 按照新顺序仅重排DOM，避免整列表重渲染导致闪烁
+    reorderDomByIds(containerSelector, dataAttr, orderedIds) {
+        const container = document.querySelector(containerSelector);
+        if (!container) return;
+        const fragment = document.createDocumentFragment();
+        orderedIds.forEach((id) => {
+            const el = container.querySelector(`[${dataAttr}="${id}"]`);
+            if (el) fragment.appendChild(el);
+        });
+        container.appendChild(fragment);
     }
 
     updatePoints() {
@@ -388,8 +417,8 @@ class PageManager {
                     <div class="task-meta">${esc(task.category)} • ${task.points}积分</div>
                 </div>
                 <div class="sort-actions">
-                    <button class="sort-btn" onclick="moveTask(${task.id}, -1)">上移</button>
-                    <button class="sort-btn" onclick="moveTask(${task.id}, 1)">下移</button>
+                    <button class="sort-btn" data-task-id="${task.id}" data-direction="-1">上移</button>
+                    <button class="sort-btn" data-task-id="${task.id}" data-direction="1">下移</button>
                 </div>
                 <div class="task-actions">
                     ${!task.completed ? `
@@ -425,8 +454,8 @@ class PageManager {
                     <div class="reward-cost">${reward.cost}积分</div>
                     <div class="reward-description">${esc(reward.description || '')}</div>
                     <div class="sort-actions">
-                        <button class="sort-btn" onclick="moveReward(${reward.id}, -1)">上移</button>
-                        <button class="sort-btn" onclick="moveReward(${reward.id}, 1)">下移</button>
+                        <button class="sort-btn" data-reward-id="${reward.id}" data-direction="-1">上移</button>
+                        <button class="sort-btn" data-reward-id="${reward.id}" data-direction="1">下移</button>
                     </div>
                     <button class="redeem-btn" 
                             onclick="redeemReward(${reward.id})" 
@@ -853,13 +882,28 @@ function moveTask(taskId, direction) {
     const idx = ids.indexOf(taskId);
     const newIdx = idx + direction;
     if (newIdx < 0 || newIdx >= ids.length) return;
-    
+    // 记录当前滚动位置与元素位置
+    const container = document.getElementById('tasksList');
+    const itemEl = container.querySelector(`[data-task-id="${taskId}"]`);
+    const prevRect = itemEl ? itemEl.getBoundingClientRect() : null;
+
     // 更新数据
     ids.splice(idx, 1);
     ids.splice(newIdx, 0, taskId);
     dataManager.updateTaskOrder(ids);
     
-    // 只更新按钮状态，不重新渲染整个列表
+    // 重排DOM顺序，避免整列表重渲染
+    pageManager.reorderDomByIds('#tasksList', 'data-task-id', ids);
+    // 保持视觉位置，减少抖动
+    if (itemEl && prevRect) {
+        const newRect = itemEl.getBoundingClientRect();
+        const deltaY = newRect.top - prevRect.top;
+        if (deltaY !== 0) {
+            // 使用scrollBy平滑抵消位移
+            container.scrollBy({ top: deltaY, behavior: 'auto' });
+        }
+    }
+    // 更新按钮状态
     pageManager.updateSortButtons();
 }
 
@@ -869,13 +913,25 @@ function moveReward(rewardId, direction) {
     const idx = ids.indexOf(rewardId);
     const newIdx = idx + direction;
     if (newIdx < 0 || newIdx >= ids.length) return;
-    
+    const container = document.getElementById('rewardsGrid');
+    const itemEl = container.querySelector(`[data-reward-id="${rewardId}"]`);
+    const prevRect = itemEl ? itemEl.getBoundingClientRect() : null;
+
     // 更新数据
     ids.splice(idx, 1);
     ids.splice(newIdx, 0, rewardId);
     dataManager.updateRewardOrder(ids);
     
-    // 只更新按钮状态，不重新渲染整个列表
+    // 重排DOM顺序，避免整列表重渲染
+    pageManager.reorderDomByIds('#rewardsGrid', 'data-reward-id', ids);
+    if (itemEl && prevRect) {
+        const newRect = itemEl.getBoundingClientRect();
+        const deltaY = newRect.top - prevRect.top;
+        if (deltaY !== 0) {
+            container.scrollBy({ top: deltaY, behavior: 'auto' });
+        }
+    }
+    // 更新按钮状态
     pageManager.updateSortButtons();
 }
 function showTemplates() {

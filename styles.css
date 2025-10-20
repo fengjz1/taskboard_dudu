@@ -234,7 +234,8 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    transition: all 0.3s ease;
+    /* 仅阴影过渡，避免布局属性动画导致抖动 */
+    transition: box-shadow 0.2s ease;
     cursor: move;
 }
 
@@ -569,7 +570,8 @@ body {
     border-radius: 10px;
     padding: 15px;
     text-align: center;
-    transition: all 0.3s ease;
+    /* 仅阴影过渡，避免布局属性动画导致抖动 */
+    transition: box-shadow 0.2s ease;
     cursor: move;
 }
 
@@ -925,4 +927,14 @@ body {
 
 .reward-item {
     animation: fadeIn 0.3s ease;
+}
+
+/* 排序模式下禁用动画与过渡，避免重排造成的抖动 */
+.sorting-mode .page.active {
+    animation: none !important;
+}
+.sorting-mode .task-item,
+.sorting-mode .reward-item {
+    animation: none !important;
+    transition: none !important;
 }
