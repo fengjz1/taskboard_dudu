@@ -1051,6 +1051,14 @@ if ('serviceWorker' in navigator) {
                 // 立即尝试更新到新SW，避免卡在旧缓存策略
                 if (registration.update) registration.update();
                 console.log('SW registered: ', registration);
+
+                // 当新SW接管后，自动刷新一次，确保加载最新资源
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    if (!window.__reloadedBySW) {
+                        window.__reloadedBySW = true;
+                        window.location.reload();
+                    }
+                });
             })
             .catch((registrationError) => {
                 console.log('SW registration failed: ', registrationError);

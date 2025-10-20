@@ -29,14 +29,25 @@ self.addEventListener('fetch', (event) => {
   const req = event.request;
   const accept = req.headers.get('accept') || '';
   const isHTML = req.mode === 'navigate' || accept.includes('text/html');
+  const dest = req.destination;
 
   // 对 HTML 使用网络优先，保证获取最新 index.html
   if (isHTML) {
     event.respondWith(
-      fetch(req)
+      fetch(new Request(req, { cache: 'no-store' }))
+        .then((networkRes) => networkRes)
+        .catch(() => caches.match(req))
+    );
+    return;
+  }
+
+  // 对脚本/样式/manifest 使用网络优先，离线回退缓存
+  if (dest === 'script' || dest === 'style' || dest === 'manifest') {
+    event.respondWith(
+      fetch(new Request(req, { cache: 'no-cache' }))
         .then((networkRes) => {
-          const resClone = networkRes.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(req, resClone)).catch(() => {});
+          const clone = networkRes.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(req, clone)).catch(() => {});
           return networkRes;
         })
         .catch(() => caches.match(req))
