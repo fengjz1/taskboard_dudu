@@ -24,7 +24,8 @@ class DataManager {
             points: parseInt(task.points, 10),
             category: task.category,
             completed: false,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            sortOrder: this.tasks.length // 添加排序字段
         };
         this.tasks.push(newTask);
         this.saveData('tasks', this.tasks);
@@ -62,7 +63,8 @@ class DataManager {
             name: reward.name,
             cost: parseInt(reward.cost, 10),
             description: reward.description,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            sortOrder: this.rewards.length // 添加排序字段
         };
         this.rewards.push(newReward);
         this.saveData('rewards', this.rewards);
@@ -136,6 +138,45 @@ class DataManager {
     deleteTemplate(templateId) {
         this.templates = this.templates.filter(t => t.id !== templateId);
         this.saveData('templates', this.templates);
+    }
+
+    // 排序相关方法
+    updateTaskOrder(taskIds) {
+        taskIds.forEach((taskId, index) => {
+            const task = this.tasks.find(t => t.id === taskId);
+            if (task) {
+                task.sortOrder = index;
+            }
+        });
+        this.saveData('tasks', this.tasks);
+    }
+
+    updateRewardOrder(rewardIds) {
+        rewardIds.forEach((rewardId, index) => {
+            const reward = this.rewards.find(r => r.id === rewardId);
+            if (reward) {
+                reward.sortOrder = index;
+            }
+        });
+        this.saveData('rewards', this.rewards);
+    }
+
+    getSortedTasks() {
+        return [...this.tasks].sort((a, b) => {
+            // 确保有sortOrder字段，兼容旧数据
+            const orderA = a.sortOrder !== undefined ? a.sortOrder : 999999;
+            const orderB = b.sortOrder !== undefined ? b.sortOrder : 999999;
+            return orderA - orderB;
+        });
+    }
+
+    getSortedRewards() {
+        return [...this.rewards].sort((a, b) => {
+            // 确保有sortOrder字段，兼容旧数据
+            const orderA = a.sortOrder !== undefined ? a.sortOrder : 999999;
+            const orderB = b.sortOrder !== undefined ? b.sortOrder : 999999;
+            return orderA - orderB;
+        });
     }
 }
 
@@ -252,7 +293,7 @@ class PageManager {
 
     renderTasks(filter = 'all') {
         const tasksList = document.getElementById('tasksList');
-        let tasks = dataManager.tasks;
+        let tasks = dataManager.getSortedTasks();
 
         if (filter !== 'all') {
             tasks = tasks.filter(task => task.category === filter);
@@ -266,7 +307,8 @@ class PageManager {
             .replace(/'/g, '&#39;');
 
         tasksList.innerHTML = tasks.map(task => `
-            <div class="task-item ${task.completed ? 'completed' : ''}">
+            <div class="task-item ${task.completed ? 'completed' : ''}" draggable="true" data-task-id="${task.id}">
+                <div class="task-drag-handle">⋮⋮</div>
                 <div class="task-info">
                     <div class="task-name">${esc(task.name)}</div>
                     <div class="task-meta">${esc(task.category)} • ${task.points}积分</div>
@@ -283,10 +325,14 @@ class PageManager {
                 </div>
             </div>
         `).join('');
+
+        // 添加拖动事件监听器
+        this.addDragListeners('task');
     }
 
     renderRewards() {
         const rewardsGrid = document.getElementById('rewardsGrid');
+        const rewards = dataManager.getSortedRewards();
         const esc = (s) => String(s)
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
@@ -294,10 +340,11 @@ class PageManager {
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
 
-        rewardsGrid.innerHTML = dataManager.rewards.map(reward => {
+        rewardsGrid.innerHTML = rewards.map(reward => {
             const canAfford = dataManager.points >= reward.cost;
             return `
-                <div class="reward-item ${canAfford ? 'affordable' : ''}">
+                <div class="reward-item ${canAfford ? 'affordable' : ''}" draggable="true" data-reward-id="${reward.id}">
+                    <div class="reward-drag-handle">⋮⋮</div>
                     <div class="reward-name">${esc(reward.name)}</div>
                     <div class="reward-cost">${reward.cost}积分</div>
                     <div class="reward-description">${esc(reward.description || '')}</div>
@@ -309,6 +356,9 @@ class PageManager {
                 </div>
             `;
         }).join('');
+
+        // 添加拖动事件监听器
+        this.addDragListeners('reward');
     }
 
     renderRecentTasks() {
@@ -358,6 +408,66 @@ class PageManager {
                 </div>
             </div>
         `).join('');
+    }
+
+    addDragListeners(type) {
+        const container = type === 'task' ? 
+            document.getElementById('tasksList') : 
+            document.getElementById('rewardsGrid');
+        
+        if (!container) return;
+
+        let draggedElement = null;
+
+        container.addEventListener('dragstart', (e) => {
+            draggedElement = e.target;
+            e.target.style.opacity = '0.5';
+            e.dataTransfer.effectAllowed = 'move';
+        });
+
+        container.addEventListener('dragend', (e) => {
+            e.target.style.opacity = '1';
+            draggedElement = null;
+        });
+
+        container.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+        });
+
+        container.addEventListener('drop', (e) => {
+            e.preventDefault();
+            
+            if (draggedElement && e.target !== draggedElement) {
+                const targetElement = e.target.closest(`[data-${type}-id]`);
+                if (targetElement && targetElement !== draggedElement) {
+                    const container = targetElement.parentNode;
+                    const draggedId = parseInt(draggedElement.dataset[`${type}Id`]);
+                    const targetId = parseInt(targetElement.dataset[`${type}Id`]);
+                    
+                    // 获取所有元素的ID
+                    const allElements = Array.from(container.children);
+                    const allIds = allElements.map(el => parseInt(el.dataset[`${type}Id`]));
+                    
+                    // 重新排序
+                    const draggedIndex = allIds.indexOf(draggedId);
+                    const targetIndex = allIds.indexOf(targetId);
+                    
+                    allIds.splice(draggedIndex, 1);
+                    allIds.splice(targetIndex, 0, draggedId);
+                    
+                    // 更新数据
+                    if (type === 'task') {
+                        dataManager.updateTaskOrder(allIds);
+                    } else {
+                        dataManager.updateRewardOrder(allIds);
+                    }
+                    
+                    // 重新渲染
+                    this.updateUI();
+                }
+            }
+        });
     }
 
     switchRewardTab(tab) {
