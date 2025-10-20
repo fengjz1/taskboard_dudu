@@ -251,16 +251,15 @@ class PageManager {
 
         // 使用事件委托处理排序按钮点击
         document.addEventListener('click', (e) => {
-            if (e.target.classList.contains('sort-btn')) {
-                const taskId = e.target.dataset.taskId;
-                const rewardId = e.target.dataset.rewardId;
-                const direction = parseInt(e.target.dataset.direction);
-                
-                if (taskId) {
-                    moveTask(parseInt(taskId), direction);
-                } else if (rewardId) {
-                    moveReward(parseInt(rewardId), direction);
-                }
+            const target = e.target;
+            if (target.classList.contains('sort-btn')) {
+                const taskId = target.dataset.taskId;
+                const rewardId = target.dataset.rewardId;
+                const direction = target.dataset.direction !== undefined ? parseInt(target.dataset.direction) : undefined;
+                if (taskId && !isNaN(direction)) { moveTask(parseInt(taskId), direction); return; }
+                if (rewardId && !isNaN(direction)) { moveReward(parseInt(rewardId), direction); return; }
+                if (target.classList.contains('reward-delete-btn') && rewardId) { deleteRewardConfig(parseInt(rewardId)); return; }
+                if (target.classList.contains('task-delete-btn') && taskId) { deleteTaskConfig(parseInt(taskId)); return; }
             }
         });
     }
@@ -419,6 +418,7 @@ class PageManager {
                 <div class="sort-actions">
                     <button class="sort-btn" data-task-id="${task.id}" data-direction="-1">上移</button>
                     <button class="sort-btn" data-task-id="${task.id}" data-direction="1">下移</button>
+                    <button class="sort-btn danger task-delete-btn" data-task-id="${task.id}">删除</button>
                 </div>
                 <div class="task-actions">
                     ${!task.completed ? `
@@ -426,9 +426,6 @@ class PageManager {
                             完成
                         </button>
                     ` : ''}
-                    <button class="task-btn delete-btn" onclick="deleteTask(${task.id})">
-                        删除
-                    </button>
                 </div>
             </div>
         `).join('');
@@ -456,6 +453,7 @@ class PageManager {
                     <div class="sort-actions">
                         <button class="sort-btn" data-reward-id="${reward.id}" data-direction="-1">上移</button>
                         <button class="sort-btn" data-reward-id="${reward.id}" data-direction="1">下移</button>
+                        <button class="sort-btn danger reward-delete-btn" data-reward-id="${reward.id}">删除</button>
                     </div>
                     <button class="redeem-btn" 
                             onclick="redeemReward(${reward.id})" 
@@ -834,12 +832,30 @@ function deleteTask(taskId) {
     }
 }
 
+// 删除任务配置项，只在编辑排序模式中出现
+function deleteTaskConfig(taskId) {
+    if (confirm('确定要删除这个任务吗？')) {
+        dataManager.deleteTask(taskId);
+        pageManager.updateUI();
+        pageManager.showToast('任务已删除');
+    }
+}
+
 function redeemReward(rewardId) {
     if (dataManager.redeemReward(rewardId)) {
         pageManager.updateUI();
         pageManager.showToast('奖励兑换成功！');
     } else {
         pageManager.showToast('积分不足！');
+    }
+}
+
+// 删除奖励配置项（不影响历史）
+function deleteRewardConfig(rewardId) {
+    if (confirm('确定要删除这个奖励吗？（不影响历史记录）')) {
+        dataManager.deleteReward(rewardId);
+        pageManager.updateUI();
+        pageManager.showToast('奖励已删除');
     }
 }
 

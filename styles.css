@@ -334,6 +334,15 @@ body {
     border-color: #e9ecef;
 }
 
+.sort-btn.danger {
+    color: #f44336;
+    border-color: #f44336;
+}
+
+.sort-btn.danger:hover {
+    background: #ffebee;
+}
+
 .task-btn {
     padding: 8px 12px;
     border: none;
