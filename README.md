@@ -49,6 +49,11 @@
 ### 访问方式
 部署完成后访问：`https://your-project-name.pages.dev`
 
+### Cloudflare Pages 缓存建议
+- 由 Service Worker 控制缓存策略：HTML 网络优先、静态资源缓存优先
+- 不在 HTML 中添加 no-cache meta，避免重复与混淆
+- 如需强制刷新，更新 Service Worker 内的 CACHE_NAME 版本
+
 ## 文件结构
 
 ```
