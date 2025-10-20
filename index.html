@@ -75,6 +75,7 @@
                     <h2>📋 任务管理</h2>
                     <div class="page-actions">
                         <button class="action-btn-small" onclick="showTemplates()">📋 模板</button>
+                        <button class="action-btn-small" id="taskSortToggle">编辑排序</button>
                         <button class="add-btn" onclick="showAddTask()">+</button>
                     </div>
                 </div>
@@ -95,7 +96,10 @@
             <div class="page" id="rewards">
                 <div class="page-header">
                     <h2>🎁 奖励兑换</h2>
-                    <button class="add-btn" onclick="showAddReward()">+</button>
+                    <div class="page-actions">
+                        <button class="action-btn-small" id="rewardSortToggle">编辑排序</button>
+                        <button class="add-btn" onclick="showAddReward()">+</button>
+                    </div>
                 </div>
 
                 <!-- 奖励分类切换 -->

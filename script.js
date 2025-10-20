@@ -187,6 +187,8 @@ const dataManager = new DataManager();
 class PageManager {
     constructor() {
         this.currentPage = 'home';
+        this.taskSortMode = false;
+        this.rewardSortMode = false;
         this.init();
     }
 
@@ -236,6 +238,16 @@ class PageManager {
                 this.switchRewardTab(tab);
             });
         });
+
+        // 排序模式开关
+        const taskSortToggle = document.getElementById('taskSortToggle');
+        if (taskSortToggle) {
+            taskSortToggle.addEventListener('click', () => this.toggleTaskSortMode());
+        }
+        const rewardSortToggle = document.getElementById('rewardSortToggle');
+        if (rewardSortToggle) {
+            rewardSortToggle.addEventListener('click', () => this.toggleRewardSortMode());
+        }
     }
 
     showPage(pageName) {
@@ -255,6 +267,27 @@ class PageManager {
 
         this.currentPage = pageName;
         this.updateUI();
+        
+        // 重新绑定排序按钮事件（确保在页面切换后正确绑定）
+        this.bindSortButtons();
+    }
+
+    bindSortButtons() {
+        const taskSortToggle = document.getElementById('taskSortToggle');
+        if (taskSortToggle) {
+            // 移除旧的事件监听器
+            taskSortToggle.replaceWith(taskSortToggle.cloneNode(true));
+            // 重新绑定
+            document.getElementById('taskSortToggle').addEventListener('click', () => this.toggleTaskSortMode());
+        }
+        
+        const rewardSortToggle = document.getElementById('rewardSortToggle');
+        if (rewardSortToggle) {
+            // 移除旧的事件监听器
+            rewardSortToggle.replaceWith(rewardSortToggle.cloneNode(true));
+            // 重新绑定
+            document.getElementById('rewardSortToggle').addEventListener('click', () => this.toggleRewardSortMode());
+        }
     }
 
     setFilter(filter) {
@@ -274,6 +307,48 @@ class PageManager {
         this.renderRecentTasks();
         this.renderTemplates();
         this.renderRewardHistory();
+
+        // 更新按钮文案
+        const taskSortToggle = document.getElementById('taskSortToggle');
+        if (taskSortToggle) taskSortToggle.textContent = this.taskSortMode ? '完成排序' : '编辑排序';
+        const rewardSortToggle = document.getElementById('rewardSortToggle');
+        if (rewardSortToggle) rewardSortToggle.textContent = this.rewardSortMode ? '完成排序' : '编辑排序';
+    }
+
+    toggleTaskSortMode() {
+        this.taskSortMode = !this.taskSortMode;
+        this.updateUI();
+    }
+
+    toggleRewardSortMode() {
+        this.rewardSortMode = !this.rewardSortMode;
+        this.updateUI();
+    }
+
+    updateSortButtons() {
+        // 更新任务排序按钮状态
+        if (this.taskSortMode) {
+            const tasks = dataManager.getSortedTasks();
+            const taskItems = document.querySelectorAll('#tasksList .task-item');
+            taskItems.forEach((item, index) => {
+                const upBtn = item.querySelector('.sort-btn:first-child');
+                const downBtn = item.querySelector('.sort-btn:last-child');
+                if (upBtn) upBtn.disabled = index === 0;
+                if (downBtn) downBtn.disabled = index === tasks.length - 1;
+            });
+        }
+
+        // 更新奖励排序按钮状态
+        if (this.rewardSortMode) {
+            const rewards = dataManager.getSortedRewards();
+            const rewardItems = document.querySelectorAll('#rewardsGrid .reward-item');
+            rewardItems.forEach((item, index) => {
+                const upBtn = item.querySelector('.sort-btn:first-child');
+                const downBtn = item.querySelector('.sort-btn:last-child');
+                if (upBtn) upBtn.disabled = index === 0;
+                if (downBtn) downBtn.disabled = index === rewards.length - 1;
+            });
+        }
     }
 
     updatePoints() {
@@ -307,11 +382,14 @@ class PageManager {
             .replace(/'/g, '&#39;');
 
         tasksList.innerHTML = tasks.map(task => `
-            <div class="task-item ${task.completed ? 'completed' : ''}" draggable="true" data-task-id="${task.id}">
-                <div class="task-drag-handle">⋮⋮</div>
+            <div class="task-item ${task.completed ? 'completed' : ''} ${this.taskSortMode ? 'sort-mode' : ''}" data-task-id="${task.id}">
                 <div class="task-info">
                     <div class="task-name">${esc(task.name)}</div>
                     <div class="task-meta">${esc(task.category)} • ${task.points}积分</div>
+                </div>
+                <div class="sort-actions">
+                    <button class="sort-btn" onclick="moveTask(${task.id}, -1)">上移</button>
+                    <button class="sort-btn" onclick="moveTask(${task.id}, 1)">下移</button>
                 </div>
                 <div class="task-actions">
                     ${!task.completed ? `
@@ -326,8 +404,7 @@ class PageManager {
             </div>
         `).join('');
 
-        // 添加拖动事件监听器
-        this.addDragListeners('task');
+        // 编辑排序模式下不使用拖拽
     }
 
     renderRewards() {
@@ -343,11 +420,14 @@ class PageManager {
         rewardsGrid.innerHTML = rewards.map(reward => {
             const canAfford = dataManager.points >= reward.cost;
             return `
-                <div class="reward-item ${canAfford ? 'affordable' : ''}" draggable="true" data-reward-id="${reward.id}">
-                    <div class="reward-drag-handle">⋮⋮</div>
+                <div class="reward-item ${canAfford ? 'affordable' : ''} ${this.rewardSortMode ? 'sort-mode' : ''}" data-reward-id="${reward.id}">
                     <div class="reward-name">${esc(reward.name)}</div>
                     <div class="reward-cost">${reward.cost}积分</div>
                     <div class="reward-description">${esc(reward.description || '')}</div>
+                    <div class="sort-actions">
+                        <button class="sort-btn" onclick="moveReward(${reward.id}, -1)">上移</button>
+                        <button class="sort-btn" onclick="moveReward(${reward.id}, 1)">下移</button>
+                    </div>
                     <button class="redeem-btn" 
                             onclick="redeemReward(${reward.id})" 
                             ${!canAfford ? 'disabled' : ''}>
@@ -356,9 +436,6 @@ class PageManager {
                 </div>
             `;
         }).join('');
-
-        // 添加拖动事件监听器
-        this.addDragListeners('reward');
     }
 
     renderRecentTasks() {
@@ -762,6 +839,45 @@ function showRewards() {
     pageManager.showPage('rewards');
 }
 
+function toggleTaskSortMode() {
+    pageManager.toggleTaskSortMode();
+}
+
+function toggleRewardSortMode() {
+    pageManager.toggleRewardSortMode();
+}
+
+function moveTask(taskId, direction) {
+    const tasks = dataManager.getSortedTasks();
+    const ids = tasks.map(t => t.id);
+    const idx = ids.indexOf(taskId);
+    const newIdx = idx + direction;
+    if (newIdx < 0 || newIdx >= ids.length) return;
+    
+    // 更新数据
+    ids.splice(idx, 1);
+    ids.splice(newIdx, 0, taskId);
+    dataManager.updateTaskOrder(ids);
+    
+    // 只更新按钮状态，不重新渲染整个列表
+    pageManager.updateSortButtons();
+}
+
+function moveReward(rewardId, direction) {
+    const rewards = dataManager.getSortedRewards();
+    const ids = rewards.map(r => r.id);
+    const idx = ids.indexOf(rewardId);
+    const newIdx = idx + direction;
+    if (newIdx < 0 || newIdx >= ids.length) return;
+    
+    // 更新数据
+    ids.splice(idx, 1);
+    ids.splice(newIdx, 0, rewardId);
+    dataManager.updateRewardOrder(ids);
+    
+    // 只更新按钮状态，不重新渲染整个列表
+    pageManager.updateSortButtons();
+}
 function showTemplates() {
     pageManager.showPage('templates');
 }

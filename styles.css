@@ -293,6 +293,46 @@ body {
     gap: 10px;
 }
 
+.sort-actions {
+    display: none;
+    gap: 8px;
+}
+
+.sort-mode .sort-actions {
+    display: flex;
+}
+
+.sort-mode .task-actions {
+    display: none;
+}
+
+.sort-btn {
+    padding: 6px 10px;
+    border: 1px solid #e9ecef;
+    background: #fff;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.sort-btn:hover {
+    background: #f8f9fa;
+    border-color: #4CAF50;
+}
+
+.sort-btn:disabled {
+    background: #f8f9fa;
+    color: #ccc;
+    cursor: not-allowed;
+    border-color: #e9ecef;
+}
+
+.sort-btn:disabled:hover {
+    background: #f8f9fa;
+    border-color: #e9ecef;
+}
+
 .task-btn {
     padding: 8px 12px;
     border: none;
