@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>任务奖励板 - 嘟嘟</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4CAF50">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="任务奖励板">
+</head>
+<body>
+    <div class="app">
+        <!-- 头部 -->
+        <header class="header">
+            <h1>🎯 任务奖励板</h1>
+            <div class="points-display">
+                <span class="points-label">积分:</span>
+                <span class="points-value" id="totalPoints">0</span>
+            </div>
+        </header>
+
+        <!-- 导航 -->
+        <nav class="nav">
+            <button class="nav-btn active" data-page="home">首页</button>
+            <button class="nav-btn" data-page="tasks">任务</button>
+            <button class="nav-btn" data-page="rewards">奖励</button>
+            <button class="nav-btn" data-page="settings">设置</button>
+        </nav>
+
+        <!-- 主要内容区域 -->
+        <main class="main">
+            <!-- 首页 -->
+            <div class="page active" id="home">
+                <div class="today-section">
+                    <h2>📅 今日任务</h2>
+                    <div class="task-stats">
+                        <div class="stat">
+                            <span class="stat-number" id="todayCompleted">0</span>
+                            <span class="stat-label">已完成</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-number" id="todayTotal">0</span>
+                            <span class="stat-label">总任务</span>
+                        </div>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                </div>
+
+                <div class="quick-actions">
+                    <button class="action-btn" onclick="showAddTask()">
+                        ➕ 添加任务
+                    </button>
+                    <button class="action-btn" onclick="showRewards()">
+                        🎁 查看奖励
+                    </button>
+                </div>
+
+                <div class="recent-tasks">
+                    <h3>最近任务</h3>
+                    <div id="recentTasksList" class="task-list">
+                        <!-- 动态生成 -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- 任务页面 -->
+            <div class="page" id="tasks">
+                <div class="page-header">
+                    <h2>📋 任务管理</h2>
+                    <div class="page-actions">
+                        <button class="action-btn-small" onclick="showTemplates()">📋 模板</button>
+                        <button class="add-btn" onclick="showAddTask()">+</button>
+                    </div>
+                </div>
+                
+                <div class="task-filters">
+                    <button class="filter-btn active" data-filter="all">全部</button>
+                    <button class="filter-btn" data-filter="学习">学习</button>
+                    <button class="filter-btn" data-filter="生活">生活</button>
+                    <button class="filter-btn" data-filter="运动">运动</button>
+                </div>
+
+                <div id="tasksList" class="task-list">
+                    <!-- 动态生成 -->
+                </div>
+            </div>
+
+            <!-- 奖励页面 -->
+            <div class="page" id="rewards">
+                <div class="page-header">
+                    <h2>🎁 奖励兑换</h2>
+                    <button class="add-btn" onclick="showAddReward()">+</button>
+                </div>
+
+                <!-- 奖励分类切换 -->
+                <div class="reward-tabs">
+                    <button class="tab-btn active" data-tab="available">可兑换</button>
+                    <button class="tab-btn" data-tab="history">兑换记录</button>
+                </div>
+
+                <!-- 可兑换奖励 -->
+                <div class="reward-section active" id="availableRewards">
+                    <div class="rewards-grid" id="rewardsGrid">
+                        <!-- 动态生成 -->
+                    </div>
+                </div>
+
+                <!-- 兑换历史 -->
+                <div class="reward-section" id="rewardHistory">
+                    <div class="history-list" id="historyList">
+                        <!-- 动态生成 -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- 模板页面 -->
+            <div class="page" id="templates">
+                <div class="page-header">
+                    <h2>📋 任务模板</h2>
+                    <button class="add-btn" onclick="showAddTemplate()">+</button>
+                </div>
+                
+                <div class="templates-info">
+                    <p class="info-text">💡 创建常用任务模板，每天可以快速添加重复任务</p>
+                </div>
+
+                <div id="templatesList" class="template-list">
+                    <!-- 动态生成 -->
+                </div>
+            </div>
+
+            <!-- 设置页面 -->
+            <div class="page" id="settings">
+                <h2>⚙️ 设置</h2>
+                
+                <div class="settings-section">
+                    <h3>数据管理</h3>
+                    <button class="settings-btn" onclick="exportData()">📤 导出数据</button>
+                    <button class="settings-btn" onclick="importData()">📥 导入数据</button>
+                    <button class="settings-btn danger" onclick="clearData()">🗑️ 清空数据</button>
+                </div>
+
+                <div class="settings-section">
+                    <h3>关于</h3>
+                    <p class="about-text">任务奖励板 v1.0</p>
+                    <p class="about-text">专为儿童设计的简单任务管理工具</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 添加任务模态框 -->
+    <div class="modal" id="addTaskModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>添加任务</h3>
+                <button class="close-btn" onclick="hideAddTask()">×</button>
+            </div>
+            
+            <!-- 任务模板选择 -->
+            <div class="template-section">
+                <h4>📋 快速选择模板</h4>
+                <div id="templateQuickList" class="template-quick-list">
+                    <!-- 动态生成 -->
+                </div>
+            </div>
+            
+            <div class="divider">
+                <span>或手动添加</span>
+            </div>
+            
+            <form id="addTaskForm">
+                <div class="form-group">
+                    <label>任务名称</label>
+                    <input type="text" id="taskName" required>
+                </div>
+                <div class="form-group">
+                    <label>积分</label>
+                    <input type="number" id="taskPoints" min="1" max="100" value="10" required>
+                </div>
+                <div class="form-group">
+                    <label>分类</label>
+                    <select id="taskCategory">
+                        <option value="学习">学习</option>
+                        <option value="生活">生活</option>
+                        <option value="运动">运动</option>
+                        <option value="其他">其他</option>
+                    </select>
+                </div>
+                <button type="submit" class="submit-btn">添加任务</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 添加奖励模态框 -->
+    <div class="modal" id="addRewardModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>添加奖励</h3>
+                <button class="close-btn" onclick="hideAddReward()">×</button>
+            </div>
+            <form id="addRewardForm">
+                <div class="form-group">
+                    <label>奖励名称</label>
+                    <input type="text" id="rewardName" required>
+                </div>
+                <div class="form-group">
+                    <label>所需积分</label>
+                    <input type="number" id="rewardCost" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label>描述</label>
+                    <textarea id="rewardDescription" rows="3"></textarea>
+                </div>
+                <button type="submit" class="submit-btn">添加奖励</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 添加模板模态框 -->
+    <div class="modal" id="addTemplateModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>添加任务模板</h3>
+                <button class="close-btn" onclick="hideAddTemplate()">×</button>
+            </div>
+            <form id="addTemplateForm">
+                <div class="form-group">
+                    <label>模板名称</label>
+                    <input type="text" id="templateName" required>
+                </div>
+                <div class="form-group">
+                    <label>积分</label>
+                    <input type="number" id="templatePoints" min="1" max="100" value="10" required>
+                </div>
+                <div class="form-group">
+                    <label>分类</label>
+                    <select id="templateCategory">
+                        <option value="学习">学习</option>
+                        <option value="生活">生活</option>
+                        <option value="运动">运动</option>
+                        <option value="其他">其他</option>
+                    </select>
+                </div>
+                <button type="submit" class="submit-btn">添加模板</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
