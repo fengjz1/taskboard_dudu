@@ -258,6 +258,7 @@ body {
     margin-right: 10px;
     cursor: grab;
     user-select: none;
+    touch-action: none;
 }
 
 .task-drag-handle:active {
@@ -555,6 +556,7 @@ body {
     margin-bottom: 5px;
     cursor: grab;
     user-select: none;
+    touch-action: none;
 }
 
 .reward-drag-handle:active {

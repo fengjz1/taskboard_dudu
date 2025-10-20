@@ -468,6 +468,74 @@ class PageManager {
                 }
             }
         });
+
+        // 移动端触摸拖拽支持
+        this.addTouchDrag(container, type);
+    }
+
+    addTouchDrag(container, type) {
+        let isDragging = false;
+        let draggingEl = null;
+
+        const isHandle = (target) => {
+            const sel = type === 'task' ? '.task-drag-handle' : '.reward-drag-handle';
+            return !!target.closest(sel);
+        };
+
+        const getItemEl = (target) => target.closest(`[data-${type}-id]`);
+
+        const onTouchStart = (e) => {
+            const target = e.target;
+            if (!isHandle(target)) return;
+            draggingEl = getItemEl(target);
+            if (!draggingEl) return;
+            isDragging = true;
+            draggingEl.classList.add('dragging');
+            // 阻止页面滚动
+            e.preventDefault();
+        };
+
+        const onTouchMove = (e) => {
+            if (!isDragging || !draggingEl) return;
+            const touch = e.touches && e.touches[0];
+            if (!touch) return;
+            const y = touch.clientY;
+            e.preventDefault();
+            const items = Array.from(container.querySelectorAll(`[data-${type}-id]`)).filter(el => el !== draggingEl);
+            let insertBeforeEl = null;
+            for (const el of items) {
+                const rect = el.getBoundingClientRect();
+                const mid = rect.top + rect.height / 2;
+                if (y < mid) {
+                    insertBeforeEl = el;
+                    break;
+                }
+            }
+            if (insertBeforeEl) {
+                container.insertBefore(draggingEl, insertBeforeEl);
+            } else {
+                container.appendChild(draggingEl);
+            }
+        };
+
+        const onTouchEnd = () => {
+            if (!isDragging || !draggingEl) return;
+            draggingEl.classList.remove('dragging');
+            const allIds = Array.from(container.children).map(el => parseInt(el.dataset[`${type}Id`]));
+            if (type === 'task') {
+                dataManager.updateTaskOrder(allIds);
+            } else {
+                dataManager.updateRewardOrder(allIds);
+            }
+            this.updateUI();
+            isDragging = false;
+            draggingEl = null;
+        };
+
+        container.addEventListener('touchstart', onTouchStart, { passive: false });
+        container.addEventListener('touchmove', onTouchMove, { passive: false });
+        container.addEventListener('touchend', onTouchEnd);
+        container.addEventListener('touchcancel', onTouchEnd);
     }
 
     switchRewardTab(tab) {
