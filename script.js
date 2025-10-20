@@ -808,6 +808,8 @@ if ('serviceWorker' in navigator) {
         // 使用相对路径，便于在子路径或本地文件部署
         navigator.serviceWorker.register('./sw.js')
             .then((registration) => {
+                // 立即尝试更新到新SW，避免卡在旧缓存策略
+                if (registration.update) registration.update();
                 console.log('SW registered: ', registration);
             })
             .catch((registrationError) => {
