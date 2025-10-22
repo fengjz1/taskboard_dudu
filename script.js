@@ -178,6 +178,72 @@ class DataManager {
             return orderA - orderB;
         });
     }
+
+    // 清理过期任务 - 保留最近一周的任务
+    cleanupOldTasks() {
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+        
+        const originalCount = this.tasks.length;
+        
+        // 过滤掉一周前的任务
+        this.tasks = this.tasks.filter(task => {
+            const taskDate = new Date(task.createdAt);
+            return taskDate >= oneWeekAgo;
+        });
+        
+        const cleanedCount = originalCount - this.tasks.length;
+        
+        if (cleanedCount > 0) {
+            this.saveData('tasks', this.tasks);
+            console.log(`清理了 ${cleanedCount} 个过期任务`);
+        }
+        
+        return cleanedCount;
+    }
+
+    // 清理昨天的任务 - 只保留今日任务
+    cleanupYesterdayTasks() {
+        const today = new Date();
+        const todayString = today.toDateString();
+        
+        const originalCount = this.tasks.length;
+        
+        // 只保留今日创建的任务
+        this.tasks = this.tasks.filter(task => {
+            const taskDate = new Date(task.createdAt).toDateString();
+            return taskDate === todayString;
+        });
+        
+        const cleanedCount = originalCount - this.tasks.length;
+        
+        if (cleanedCount > 0) {
+            this.saveData('tasks', this.tasks);
+            console.log(`清理了 ${cleanedCount} 个昨天的任务`);
+        }
+        
+        return cleanedCount;
+    }
+
+    // 获取任务统计信息
+    getTaskStats() {
+        const today = new Date().toDateString();
+        
+        const allTasks = this.tasks.length;
+        const completedTasks = this.tasks.filter(task => task.completed).length;
+        const todayTasks = this.tasks.filter(task => {
+            const taskDate = new Date(task.createdAt).toDateString();
+            return taskDate === today;
+        }).length;
+        const yesterdayTasks = allTasks - todayTasks;
+        
+        return {
+            total: allTasks,
+            completed: completedTasks,
+            today: todayTasks,
+            yesterday: yesterdayTasks
+        };
+    }
 }
 
 // 全局数据管理器
@@ -318,7 +384,6 @@ class PageManager {
         this.updateTodayStats();
         this.renderTasks();
         this.renderRewards();
-        this.renderRecentTasks();
         this.renderTemplates();
         this.renderRewardHistory();
 
@@ -396,7 +461,8 @@ class PageManager {
 
     renderTasks(filter = 'all') {
         const tasksList = document.getElementById('tasksList');
-        let tasks = dataManager.getSortedTasks();
+        // 只显示今日任务
+        let tasks = dataManager.getTodayTasks();
 
         if (filter !== 'all') {
             tasks = tasks.filter(task => task.category === filter);
@@ -409,26 +475,36 @@ class PageManager {
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
 
-        tasksList.innerHTML = tasks.map(task => `
-            <div class="task-item ${task.completed ? 'completed' : ''} ${this.taskSortMode ? 'sort-mode' : ''}" data-task-id="${task.id}">
-                <div class="task-info">
-                    <div class="task-name">${esc(task.name)}</div>
-                    <div class="task-meta">${esc(task.category)} • ${task.points}积分</div>
+        if (tasks.length === 0) {
+            tasksList.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">📝</div>
+                    <div class="empty-text">今日还没有任务</div>
+                    <div class="empty-hint">点击 + 按钮添加今日任务</div>
                 </div>
-                <div class="sort-actions">
-                    <button class="sort-btn" data-task-id="${task.id}" data-direction="-1">上移</button>
-                    <button class="sort-btn" data-task-id="${task.id}" data-direction="1">下移</button>
-                    <button class="sort-btn danger task-delete-btn" data-task-id="${task.id}">删除</button>
+            `;
+        } else {
+            tasksList.innerHTML = tasks.map(task => `
+                <div class="task-item ${task.completed ? 'completed' : ''} ${this.taskSortMode ? 'sort-mode' : ''}" data-task-id="${task.id}">
+                    <div class="task-info">
+                        <div class="task-name">${esc(task.name)}</div>
+                        <div class="task-meta">${esc(task.category)} • ${task.points}积分</div>
+                    </div>
+                    <div class="sort-actions">
+                        <button class="sort-btn" data-task-id="${task.id}" data-direction="-1">上移</button>
+                        <button class="sort-btn" data-task-id="${task.id}" data-direction="1">下移</button>
+                        <button class="sort-btn danger task-delete-btn" data-task-id="${task.id}">删除</button>
+                    </div>
+                    <div class="task-actions">
+                        ${!task.completed ? `
+                            <button class="task-btn complete-btn" onclick="completeTask(${task.id})">
+                                完成
+                            </button>
+                        ` : ''}
+                    </div>
                 </div>
-                <div class="task-actions">
-                    ${!task.completed ? `
-                        <button class="task-btn complete-btn" onclick="completeTask(${task.id})">
-                            完成
-                        </button>
-                    ` : ''}
-                </div>
-            </div>
-        `).join('');
+            `).join('');
+        }
 
         // 编辑排序模式下不使用拖拽
     }
@@ -465,27 +541,6 @@ class PageManager {
         }).join('');
     }
 
-    renderRecentTasks() {
-        const recentTasksList = document.getElementById('recentTasksList');
-        const recentTasks = dataManager.tasks.slice(-5).reverse();
-        
-        const esc = (s) => String(s)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-
-        recentTasksList.innerHTML = recentTasks.map(task => `
-            <div class="task-item ${task.completed ? 'completed' : ''}">
-                <div class="task-info">
-                    <div class="task-name">${esc(task.name)}</div>
-                    <div class="task-meta">${esc(task.category)} • ${task.points}积分</div>
-                </div>
-                <div class="task-points">${task.points}</div>
-            </div>
-        `).join('');
-    }
 
     renderTemplates() {
         const templatesList = document.getElementById('templatesList');
@@ -1045,6 +1100,25 @@ function importData() {
     input.click();
 }
 
+function cleanupOldTasks() {
+    const today = new Date().toDateString();
+    const yesterdayTasks = dataManager.tasks.filter(task => {
+        const taskDate = new Date(task.createdAt).toDateString();
+        return taskDate !== today;
+    });
+    
+    if (yesterdayTasks.length === 0) {
+        pageManager.showToast('没有需要清理的昨天任务');
+        return;
+    }
+    
+    if (confirm(`发现 ${yesterdayTasks.length} 个昨天的任务，确定要清理吗？\n\n清理规则：\n• 只保留今日创建的任务\n• 清理所有昨天的任务（无论是否完成）\n• 每天重新规划任务`)) {
+        const cleanedCount = dataManager.cleanupYesterdayTasks();
+        pageManager.updateUI();
+        pageManager.showToast(`清理完成！删除了 ${cleanedCount} 个昨天的任务`);
+    }
+}
+
 function clearData() {
     if (confirm('确定要清空所有数据吗？此操作不可恢复！')) {
         localStorage.clear();
@@ -1055,6 +1129,12 @@ function clearData() {
 // 初始化应用
 let pageManager;
 document.addEventListener('DOMContentLoaded', () => {
+    // 启动时自动清理昨天的任务
+    const cleanedCount = dataManager.cleanupYesterdayTasks();
+    if (cleanedCount > 0) {
+        console.log(`应用启动时自动清理了 ${cleanedCount} 个昨天的任务`);
+    }
+    
     pageManager = new PageManager();
 });
 

@@ -213,11 +213,19 @@ body {
     font-size: 16px;
     cursor: pointer;
     transition: all 0.3s ease;
+    margin: 0 5px;
 }
 
 .action-btn:hover {
     background: #45a049;
     transform: translateY(-2px);
+}
+
+.action-btn.primary {
+    background: linear-gradient(135deg, #4CAF50, #45a049);
+    font-size: 18px;
+    padding: 18px;
+    box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
 }
 
 /* 任务列表 */
@@ -500,6 +508,40 @@ body {
     color: #666;
     padding: 40px 20px;
     font-size: 14px;
+}
+
+.empty-icon {
+    font-size: 48px;
+    margin-bottom: 15px;
+    opacity: 0.6;
+}
+
+.empty-text {
+    font-size: 16px;
+    font-weight: bold;
+    margin-bottom: 8px;
+    color: #333;
+}
+
+.empty-hint {
+    font-size: 12px;
+    color: #999;
+}
+
+/* 任务信息提示 */
+.task-info {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+.info-text {
+    color: #666;
+    font-size: 14px;
+    margin: 0;
+    text-align: center;
 }
 
 /* 模板列表 */
